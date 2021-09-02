@@ -20,7 +20,6 @@ let statusCode = 401;
  */
 exports.lambdaHandler = async (event, context) => {
     try {
-        console.log(JSON.stringify(event));
         const validSignature = validateLineSignature(
             event.body,
             event.headers['x-line-signature'],
@@ -39,7 +38,7 @@ exports.lambdaHandler = async (event, context) => {
                 lineEvent.message.text,
                 event.requestContext,
                 lineEvent.replyToken
-            )
+            );
         }
         response = {
             'statusCode': statusCode,
@@ -72,9 +71,7 @@ const sendMessageToFlex = async (
     requestContext,
     replyToken
 ) => {
-    twilioClient = twilio.getTwilioClient();
     const flexChannel = await getFlexChannel(
-        twilioClient,
         process.env.TWILIO_FLEX_FLOW_SID,
         process.env.TWILIO_FLEX_CHAT_SERVICE_SID,
         userId,
@@ -91,7 +88,6 @@ const sendMessageToFlex = async (
 };
 
 const getFlexChannel = async (
-    twilioClient,
     flexFlowSid,
     flexChatServiceSid,
     lineUserId,
@@ -100,6 +96,7 @@ const getFlexChannel = async (
     replyToken
 ) => {
     let flexChannel;
+    twilioClient = twilio.getTwilioClient();
     try {
         const channelExists = await hasOpenChannel(twilioClient, lineUserId);
         // Identity is unique per channel, if we create a new channel that already exists, there's no penalty to that

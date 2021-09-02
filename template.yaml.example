@@ -32,6 +32,18 @@ Resources:
           Properties:
             Path: /inbound
             Method: post
+  OutboundFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: src/
+      Handler: outbound.lambdaHandler
+      Runtime: nodejs14.x
+      Events:
+        Outbound:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /outbound
+            Method: post
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
@@ -46,3 +58,12 @@ Outputs:
   InboundFunctionIamRole:
     Description: "Implicit IAM Role created for Inbound function"
     Value: !GetAtt InboundFunctionRole.Arn
+  OutboundApi:
+    Description: "API Gateway endpoint URL for Prod stage for Outbound function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/outbound/"
+  OutboundFunction:
+    Description: "Outbound Lambda Function ARN"
+    Value: !GetAtt OutboundFunction.Arn
+  OutboundFunctionIamRole:
+    Description: "Implicit IAM Role created for Outbound function"
+    Value: !GetAtt OutboundFunctionRole.Arn
