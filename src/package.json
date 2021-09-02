@@ -8,7 +8,9 @@
   "license": "MIT",
   "dependencies": {
     "@line/bot-sdk": "^7.3.0",
-    "axios": "^0.21.1"
+    "axios": "^0.21.1",
+    "base-64": "^1.0.0",
+    "twilio": "^3.67.1"
   },
   "scripts": {
     "test": "mocha tests/unit/"
