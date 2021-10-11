@@ -10,7 +10,7 @@
     "@line/bot-sdk": "^7.4.0",
     "axios": "^0.22.0",
     "base-64": "^1.0.0",
-    "twilio": "^3.68.0"
+    "twilio": "^3.69.0"
   },
   "scripts": {
     "test": "mocha tests/unit/"
