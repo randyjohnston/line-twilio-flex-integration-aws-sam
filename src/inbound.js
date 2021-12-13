@@ -73,14 +73,12 @@ const sendMessageToFlex = async (
 ) => {
     const flexChannel = await getFlexChannel(
         process.env.TWILIO_FLEX_FLOW_SID,
-        process.env.TWILIO_FLEX_CHAT_SERVICE_SID,
         userId,
         lineDisplayName,
         requestContext,
         replyToken
     );
     await sendFlexChatMessage(
-        process.env.TWILIO_FLEX_CHAT_SERVICE_SID,
         flexChannel.sid,
         userId,
         text
@@ -89,7 +87,6 @@ const sendMessageToFlex = async (
 
 const getFlexChannel = async (
     flexFlowSid,
-    flexChatServiceSid,
     lineUserId,
     lineDisplayName,
     requestContext,
@@ -109,10 +106,21 @@ const getFlexChannel = async (
             target: lineUserId,
         });
         console.log('Created or retrieved Flex chat channel SID: ', flexChannel.sid);
-        // Duplicating webhooks results in duplicate flows between Twitter and Flex
+        // Duplicating webhooks results in duplicate flows between LINE and Flex
         if (!channelExists) {
-            const webhook = await twilioClient.chat
-                .services(flexChatServiceSid)
+            const convWebhook = await twilioClient.conversations
+                .conversations(flexChannel.sid)
+                .webhooks.create({
+                    target: 'webhook',
+                    configuration: {
+                        method: 'POST',
+                        url: `https://${requestContext.domainName}/${requestContext.stage}/outbound`,
+                        filters: ['onMessageAdded'],
+                    },
+                });
+            console.log('Created conv. webhook SID: ', convWebhook.sid);
+            const chatWebhook = await twilioClient.chat
+                .services(process.env.TWILIO_FLEX_CHAT_SERVICE_SID)
                 .channels(flexChannel.sid)
                 .webhooks.create({
                     type: 'webhook',
@@ -122,7 +130,7 @@ const getFlexChannel = async (
                         filters: ['onMessageSent'],
                     },
                 });
-            console.log('Created webhook SID: ', webhook.sid);
+            console.log('Created chat webhook SID: ', chatWebhook.sid);
             await sendAckReply(replyToken);
         }
     } catch (e) {
@@ -132,41 +140,31 @@ const getFlexChannel = async (
 };
 
 const hasOpenChannel = async (twilioClient, lineUserId) => {
-    const channels = await twilioClient.chat
-        .services(process.env.TWILIO_FLEX_CHAT_SERVICE_SID)
-        .channels.list();
+    const channels = await twilioClient.conversations
+        .participantConversations
+        .list({ identity: lineUserId });
     const openChannelExists =
         channels.filter((c) => {
-            const { from, status } = JSON.parse(c.attributes);
+            const { chatServiceSid, conversationAttributes } = c;
             // Channels are automatically set to INACTIVE when they are ended by a Flex Agent
-            return from.includes(lineUserId) && status !== 'INACTIVE';
+            return (
+                chatServiceSid === process.env.TWILIO_FLEX_CHAT_SERVICE_SID
+                && JSON.parse(conversationAttributes).status === 'ACTIVE'
+            );
         }).length > 0;
     return openChannelExists;
 };
 
 const sendFlexChatMessage = async (
-    flexChatServiceSid,
     flexChannelSid,
     userId,
     text
 ) => {
-    const params = new URLSearchParams();
-    params.append('Body', text);
-    params.append('From', userId);
-    const response = await axios.post(
-        `https://chat.twilio.com/v2/Services/${flexChatServiceSid}/Channels/${flexChannelSid}/Messages`,
-        params,
-        {
-            headers: {
-                'X-Twilio-Webhook-Enabled': 'true',
-                Authorization: `Basic ${base64.encode(
-                    `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
-                )}`
-            },
-        }
-    );
-    responseData = response.data;
-    console.log('Created inbound chat message SID: ', responseData.sid);
+    twilioClient = twilio.getTwilioClient();
+    const message = await twilioClient.conversations.conversations(flexChannelSid)
+        .messages
+        .create({ author: userId, body: text, xTwilioWebhookEnabled: true })
+    console.log('Created inbound chat message SID: ', message.sid);
 };
 
 const sendAckReply = async (replyToken) => {

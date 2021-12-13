@@ -20,6 +20,7 @@ let statusCode = 401;
  */
 exports.lambdaHandler = async (event, context) => {
     try {
+        console.log(event.body);
         const eventBody = querystring.parse(event.body)
         const validSignature = validateTwlilioSignature(
             eventBody,
